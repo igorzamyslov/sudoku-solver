@@ -77,15 +77,19 @@ class Field:
         return f"Field({self.data})"
 
     @property
-    def is_valid(self):
+    def is_valid(self) -> bool:
         """ Checks that every row, column and square are correct """
         return (
             all(row.is_valid for row in self.rows)
             and all(column.is_valid for column in self.columns)
             and all(square.is_valid for square in self.squares))
+
+    @property
+    def has_empty_cells(self) -> bool:
+        return any(cell.value is None for cell in self.cells)
     
     @property
-    def cells_list(self) -> Iterator[Cell]:
+    def cells(self) -> Iterator[Cell]:
         for row in self.data:
             for cell in row:
                 yield cell
@@ -126,7 +130,7 @@ class Field:
         for row_index, row in enumerate(data):
             cell_row = []
             for column_index, value in enumerate(row):
-                cell_row.append(Cell(value, column_index, row_index))
+                cell_row.append(Cell(None if value == 0 else value, column_index, row_index))
             cells.append(cell_row)
         return Field(cells)
 
@@ -178,7 +182,9 @@ class Field:
         column_missing_values = self.get_column(cell.column).get_missing_values()
         square_missing_values = (self.get_square_from_coordinates(cell.column, cell.row)
                                  .get_missing_values())
-        return row_missing_values & column_missing_values & square_missing_values
+        possible_values = row_missing_values & column_missing_values & square_missing_values
+        assert len(possible_values) > 0
+        return possible_values
 
 
 if __name__ == '__main__':
