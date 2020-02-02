@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import product
-from typing import List, Optional, Iterator
+from typing import List, Optional, Iterator, Set
 
 # A list pairs of coordinates that define a Square
 SQUARES_COORDINATES = list(product([[0, 3], [3, 6], [6, 9]], repeat=2))
+ALLOWED_VALUES = {1, 2, 3, 4, 5, 6, 7, 8, 9, None}
 
 
 @dataclass()
@@ -13,6 +14,10 @@ class Cell:
     value: Optional[int]
     column: int
     row: int
+
+    def __post_init__(self):
+        if self.value not in ALLOWED_VALUES:
+            raise ValueError(f"{self.value} is not a valid value for a Cell")
 
     def __repr__(self):
         return f"Cell(value={self.value}, column={self.column}, row={self.row})"
@@ -38,6 +43,10 @@ class Line:
             all(cell.is_valid for cell in self.cells)
             and len(set(cell.value for cell in self.cells)) == 9)
 
+    def get_possible_values(self) -> Set[int]:
+        populated_values = {cell.value for cell in self.cells if cell.value is not None}
+        return ALLOWED_VALUES - {None} - populated_values
+
 
 @dataclass()
 class Square:
@@ -53,6 +62,11 @@ class Square:
         return (
             all(cell.is_valid for row in self.rows for cell in row)
             and len(set(cell.value for row in self.rows for cell in row)) == 9)
+
+    def get_possible_values(self) -> Set[int]:
+        populated_values = {cell.value for row in self.rows for cell in row
+                            if cell.value is not None}
+        return ALLOWED_VALUES - {None} - populated_values
 
 
 @dataclass()
@@ -107,6 +121,7 @@ class Field:
 
     @staticmethod
     def init_from_data(data: List[List[Optional[int]]]) -> Field:
+        """ Initialise the Field from the List of Lists """
         cells = []
         for row_index, row in enumerate(data):
             cell_row = []
@@ -115,10 +130,24 @@ class Field:
             cells.append(cell_row)
         return Field(cells)
 
+    def print(self):
+        print(" ------- ------- ------- ")
+        for i, row in enumerate(self.data):
+            print("|", end=" ")
+            for j, cell in enumerate(row):
+                print("-" if cell.value is None else cell.value, end=" ")
+                if (j+1) % 3 == 0:
+                    print("|", end=" ")
+            print()
+            if (i+1) % 3 == 0:
+                print(" ------- ------- ------- ")
+
     def get_row(self, index: int) -> Line:
+        """ Get n-th row """
         return Line(self.data[index])
 
     def get_column(self, index: int) -> Line:
+        """ Get n-th column """
         return Line([self.get_cell(index, i) for i in range(9)])
 
     def get_square(self, column: int, row: int) -> Square:
@@ -133,9 +162,23 @@ class Field:
             square_data.append(square_row)
         return Square(square_data)
 
+    def get_square_from_coordinates(self, column: int, row: int) -> Square:
+        """ Return a Square for the given coordinates of a 9x9 field """
+        return self.get_square(column // 3, row // 3)
+
     def get_cell(self, column: int, row: int) -> Cell:
         """ Return a cell from a 9x9 field"""
         return self.data[row][column]
+
+    def get_possible_values(self, cell: Cell) -> Set[int]:
+        """ Provided a Cell, return possible values for it """
+        if cell.value is not None:
+            raise ValueError(f"Cell already has a value")
+        row_possible_values = self.get_row(cell.row).get_possible_values()
+        column_possible_values = self.get_column(cell.column).get_possible_values()
+        square_possible_values = (self.get_square_from_coordinates(cell.column, cell.row)
+                                  .get_possible_values())
+        return row_possible_values & column_possible_values & square_possible_values
 
 
 if __name__ == '__main__':
@@ -144,24 +187,20 @@ if __name__ == '__main__':
     for i in range(9):
         row = []
         for j in range(9):
-            row.append(j)
+            row.append(j+1)
         row = row[step:] + row[:step]
         field_data.append(row)
         step += 3
         if step >= 9:
             step -= 8
-    for row in field_data:
-        print(row)
+
     field = Field.init_from_data(field_data)
 
-    print(field.is_valid)
-    print()
-    for row in field.rows:
-        print(row.is_valid)
-    print()
-    for c in field.columns:
-        print(c.is_valid)
-    print()
-    for square in field.squares:
-        print(square.is_valid)
+    field.get_cell(0, 0).value = None
+    field.get_cell(0, 1).value = None
+    field.get_cell(0, 2).value = None
+    field.get_cell(0, 6).value = None
+    field.get_cell(5, 0).value = None
+    field.get_cell(6, 0).value = None
 
+    field.print()
