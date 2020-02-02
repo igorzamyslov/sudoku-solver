@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from itertools import product
 from typing import List, Optional, Iterator
 
+# A list pairs of coordinates that define a Square
+SQUARES_COORDINATES = list(product([[0, 3], [3, 6], [6, 9]], repeat=2))
+
 
 @dataclass()
 class Cell:
@@ -65,39 +68,40 @@ class Field:
         return (
             all(row.is_valid for row in self.rows)
             and all(column.is_valid for column in self.columns)
-            and all(square.is_valid for row in self.squares for square in row))
+            and all(square.is_valid for square in self.squares))
+    
+    @property
+    def cells_list(self) -> Iterator[Cell]:
+        for row in self.data:
+            for cell in row:
+                yield cell
 
     @property
     def rows(self) -> Iterator[Line]:
         """ Return a list of rows """
-        for row in self.data:
-            yield Line(row)
+        for i in range(9):
+            yield self.get_row(i)
 
     @property
     def columns(self) -> Iterator[Line]:
         """ Return a list of columns """
         for i in range(9):
-            column_cells = []
-            for row in self.data:
-                column_cells.append(row[i])
-            yield Line(column_cells)
+            yield self.get_column(i)
 
     @property
-    def squares(self) -> List[List[Square]]:
-        """ Returns 3 lists (rows) of squares """
-        squares_coordinates = [[0, 3], [3, 6], [6, 9]]
-        squares_coordinates_combs = list(product(squares_coordinates, repeat=2))
-        squares = []
+    def squares(self) -> Iterator[Square]:
         for i in range(3):
+            for j in range(3):
+                yield self.get_square(i, j)
+
+    @property
+    def squares_field(self) -> List[List[Square]]:
+        """ Returns 3 lists (rows) of squares """
+        squares = []
+        for row in range(3):
             squares_row = []
-            for comb in squares_coordinates_combs[3 * i:3 * (i + 1)]:
-                square_data = []
-                for row in self.data[comb[0][0]:comb[0][1]]:
-                    square_row = []
-                    for cell in row[comb[1][0]:comb[1][1]]:
-                        square_row.append(cell)
-                    square_data.append(square_row)
-                squares_row.append(Square(square_data))
+            for column in range(3):
+                squares_row.append(self.get_square(column, row))
             squares.append(squares_row)
         return squares
 
@@ -110,6 +114,28 @@ class Field:
                 cell_row.append(Cell(value, column_index, row_index))
             cells.append(cell_row)
         return Field(cells)
+
+    def get_row(self, index: int) -> Line:
+        return Line(self.data[index])
+
+    def get_column(self, index: int) -> Line:
+        return Line([self.get_cell(index, i) for i in range(9)])
+
+    def get_square(self, column: int, row: int) -> Square:
+        """ Return a square from a 3x3 field """
+        comb_index = row * 3 + column
+        comb = SQUARES_COORDINATES[comb_index]
+        square_data = []
+        for cells_row in self.data[comb[0][0]:comb[0][1]]:
+            square_row = []
+            for cell in cells_row[comb[1][0]:comb[1][1]]:
+                square_row.append(cell)
+            square_data.append(square_row)
+        return Square(square_data)
+
+    def get_cell(self, column: int, row: int) -> Cell:
+        """ Return a cell from a 9x9 field"""
+        return self.data[row][column]
 
 
 if __name__ == '__main__':
@@ -136,7 +162,6 @@ if __name__ == '__main__':
     for c in field.columns:
         print(c.is_valid)
     print()
-    for row in field.squares:
-        for square in row:
-            print(square.is_valid)
+    for square in field.squares:
+        print(square.is_valid)
 
