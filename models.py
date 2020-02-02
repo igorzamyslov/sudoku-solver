@@ -65,8 +65,7 @@ class Field:
         return (
             all(row.is_valid for row in self.rows)
             and all(column.is_valid for column in self.columns)
-            # squares
-        )
+            and all(square.is_valid for row in self.squares for square in row))
 
     @property
     def rows(self) -> Iterator[Line]:
