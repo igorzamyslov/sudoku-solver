@@ -43,7 +43,7 @@ class Line:
             all(cell.is_valid for cell in self.cells)
             and len(set(cell.value for cell in self.cells)) == 9)
 
-    def get_possible_values(self) -> Set[int]:
+    def get_missing_values(self) -> Set[int]:
         populated_values = {cell.value for cell in self.cells if cell.value is not None}
         return ALLOWED_VALUES - {None} - populated_values
 
@@ -63,7 +63,7 @@ class Square:
             all(cell.is_valid for row in self.rows for cell in row)
             and len(set(cell.value for row in self.rows for cell in row)) == 9)
 
-    def get_possible_values(self) -> Set[int]:
+    def get_missing_values(self) -> Set[int]:
         populated_values = {cell.value for row in self.rows for cell in row
                             if cell.value is not None}
         return ALLOWED_VALUES - {None} - populated_values
@@ -174,11 +174,11 @@ class Field:
         """ Provided a Cell, return possible values for it """
         if cell.value is not None:
             raise ValueError(f"Cell already has a value")
-        row_possible_values = self.get_row(cell.row).get_possible_values()
-        column_possible_values = self.get_column(cell.column).get_possible_values()
-        square_possible_values = (self.get_square_from_coordinates(cell.column, cell.row)
-                                  .get_possible_values())
-        return row_possible_values & column_possible_values & square_possible_values
+        row_missing_values = self.get_row(cell.row).get_missing_values()
+        column_missing_values = self.get_column(cell.column).get_missing_values()
+        square_missing_values = (self.get_square_from_coordinates(cell.column, cell.row)
+                                 .get_missing_values())
+        return row_missing_values & column_missing_values & square_missing_values
 
 
 if __name__ == '__main__':
