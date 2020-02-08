@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import product
-from typing import List, Optional, Iterator, Set
+from typing import List, Optional, Iterator, Set, Tuple
 
 # A list pairs of coordinates that define a Square
 SQUARES_COORDINATES = list(product([[0, 3], [3, 6], [6, 9]], repeat=2))
@@ -26,6 +26,10 @@ class Cell:
     def is_valid(self) -> bool:
         """ Checks that cell has a value """
         return self.value is not None
+
+    @property
+    def square_coords(self) -> Tuple[int, int]:
+        return self.column // 3, self.row // 3
 
 
 @dataclass()
@@ -52,6 +56,8 @@ class Line:
 class Square:
     """ Represents a square of a Field """
     rows: List[List[Cell]]
+    column: int
+    row: int
 
     def __repr__(self):
         return f"Square({self.rows})"
@@ -63,10 +69,28 @@ class Square:
             all(cell.is_valid for row in self.rows for cell in row)
             and len(set(cell.value for row in self.rows for cell in row)) == 9)
 
+    @property
+    def cells(self) -> Iterator[Cell]:
+        for row in self.rows:
+            for cell in row:
+                yield cell
+
     def get_missing_values(self) -> Set[int]:
         populated_values = {cell.value for row in self.rows for cell in row
                             if cell.value is not None}
         return ALLOWED_VALUES - {None} - populated_values
+
+    def print(self):
+        print(" ------- ")
+        for i, row in enumerate(self.rows):
+            print("|", end=" ")
+            for j, cell in enumerate(row):
+                print("-" if cell.value is None else cell.value, end=" ")
+                if (j+1) % 3 == 0:
+                    print("|", end=" ")
+            print()
+            if (i+1) % 3 == 0:
+                print(" ------- ")
 
 
 @dataclass()
@@ -87,7 +111,7 @@ class Field:
     @property
     def has_empty_cells(self) -> bool:
         return any(cell.value is None for cell in self.cells)
-    
+
     @property
     def cells(self) -> Iterator[Cell]:
         for row in self.data:
@@ -140,10 +164,10 @@ class Field:
             print("|", end=" ")
             for j, cell in enumerate(row):
                 print("-" if cell.value is None else cell.value, end=" ")
-                if (j+1) % 3 == 0:
+                if (j + 1) % 3 == 0:
                     print("|", end=" ")
             print()
-            if (i+1) % 3 == 0:
+            if (i + 1) % 3 == 0:
                 print(" ------- ------- ------- ")
 
     def get_row(self, index: int) -> Line:
@@ -164,7 +188,7 @@ class Field:
             for cell in cells_row[comb[1][0]:comb[1][1]]:
                 square_row.append(cell)
             square_data.append(square_row)
-        return Square(square_data)
+        return Square(square_data, column, row)
 
     def get_square_from_coordinates(self, column: int, row: int) -> Square:
         """ Return a Square for the given coordinates of a 9x9 field """
@@ -173,18 +197,6 @@ class Field:
     def get_cell(self, column: int, row: int) -> Cell:
         """ Return a cell from a 9x9 field"""
         return self.data[row][column]
-
-    def get_possible_values(self, cell: Cell) -> Set[int]:
-        """ Provided a Cell, return possible values for it """
-        if cell.value is not None:
-            raise ValueError(f"Cell already has a value")
-        row_missing_values = self.get_row(cell.row).get_missing_values()
-        column_missing_values = self.get_column(cell.column).get_missing_values()
-        square_missing_values = (self.get_square_from_coordinates(cell.column, cell.row)
-                                 .get_missing_values())
-        possible_values = row_missing_values & column_missing_values & square_missing_values
-        assert len(possible_values) > 0
-        return possible_values
 
 
 if __name__ == '__main__':
@@ -205,8 +217,15 @@ if __name__ == '__main__':
     field.get_cell(0, 0).value = None
     field.get_cell(0, 1).value = None
     field.get_cell(0, 2).value = None
+    field.get_cell(2, 0).value = None
+    field.get_cell(2, 5).value = None
     field.get_cell(0, 6).value = None
     field.get_cell(5, 0).value = None
     field.get_cell(6, 0).value = None
 
     field.print()
+
+
+    from solver import SudokuSolver
+    # print(SudokuSolver._get_possible_value_tier_1(field, field.get_cell(2, 0)))
+    print(SudokuSolver._get_possible_value_tier_2(field, field.get_cell(2, 0)))
